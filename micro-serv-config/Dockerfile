@@ -1,12 +1,22 @@
-FROM openjdk:17-jdk-slim
-LABEL authors="AdamD"
+FROM openjdk:17-jdk-alpine as builder
+
+WORKDIR /app/micro-serv-config
+
+COPY ../pom.xml /app
+COPY ./.mvn ./.mvn
+COPY ./mvnw .
+COPY ./pom.xml .
+RUN ./mvnw clean package -Dmaven.test.skip -Dmaven.main.skip -Dspring-boot.repackage.skip && rm -r ./target/
+  #RUN ./mvnw dependency:go-offline
+COPY ../src ./src
+
+RUN ./mvn clean package -DskipTests
+
+FROM openjdk:17-jdk-alpine
+
 WORKDIR /app
 
-COPY target/micro-serv-config.jar app.jar
+COPY --from=builder /app/micro-serv-config/target/micro-serv-config-0.0.1-SNAPSHOT.jar .
+EXPOSE 8085
 
-# Exponer el puerto que usará el microservicio
-EXPOSE 8080
-
-# Comando para ejecutar la aplicación
-CMD ["java", "-jar", "app.jar"]
-ENTRYPOINT ["top", "-b"]
+ENTRYPOINT ["java", "-jar", "micro-serv-config-0.0.1-SNAPSHOT.jar"]
